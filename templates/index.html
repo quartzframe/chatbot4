@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0b1020">
+    <title>Home Assistant AI</title>
+    <style>
+        :root {
+            --bg: #070b16;
+            --panel: rgba(15, 23, 42, 0.78);
+            --panel-2: rgba(30, 41, 59, 0.58);
+            --line: rgba(148, 163, 184, 0.16);
+            --text: #eef2ff;
+            --muted: #94a3b8;
+            --accent: #60a5fa;
+            --accent-2: #a78bfa;
+            --user: #1e3a5f;
+            --assistant: rgba(30, 41, 59, 0.72);
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            color: var(--text);
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background:
+                radial-gradient(circle at 15% 10%, rgba(96, 165, 250, 0.16), transparent 28%),
+                radial-gradient(circle at 85% 85%, rgba(167, 139, 250, 0.13), transparent 30%),
+                var(--bg);
+            display: grid;
+            place-items: center;
+            padding: 22px;
+        }
+
+        .app-shell {
+            width: min(1120px, 100%);
+            height: min(850px, calc(100vh - 44px));
+            min-height: 620px;
+            display: grid;
+            grid-template-columns: 270px 1fr;
+            overflow: hidden;
+            border: 1px solid var(--line);
+            border-radius: 28px;
+            background: var(--panel);
+            backdrop-filter: blur(24px);
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.42);
+        }
+
+        .sidebar {
+            padding: 26px 20px;
+            border-right: 1px solid var(--line);
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.9), rgba(7, 11, 22, 0.65));
+            display: flex;
+            flex-direction: column;
+        }
+
+        .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; }
+        .brand-mark {
+            width: 46px; height: 46px; border-radius: 15px;
+            display: grid; place-items: center;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            box-shadow: 0 10px 30px rgba(96, 165, 250, 0.22);
+            font-size: 22px;
+        }
+        .brand h1 { margin: 0; font-size: 16px; letter-spacing: .2px; }
+        .brand p { margin: 3px 0 0; color: var(--muted); font-size: 11px; }
+
+        .side-title { color: #64748b; text-transform: uppercase; font-size: 10px; letter-spacing: 1.5px; margin: 0 10px 12px; }
+        .scope-card {
+            padding: 15px;
+            border: 1px solid var(--line);
+            border-radius: 17px;
+            background: var(--panel-2);
+            line-height: 1.55;
+            color: #cbd5e1;
+            font-size: 12px;
+        }
+        .scope-card strong { display: block; color: #f8fafc; margin-bottom: 5px; }
+        .status { margin-top: auto; display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 11px; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; background: #34d399; box-shadow: 0 0 12px #34d399; }
+
+        .chat {
+            min-width: 0;
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            background: rgba(2, 6, 23, 0.28);
+        }
+        .topbar { padding: 21px 25px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; }
+        .topbar h2 { margin: 0; font-size: 18px; }
+        .topbar span { color: var(--muted); font-size: 11px; }
+        .clear-btn { border: 1px solid var(--line); background: transparent; color: #cbd5e1; padding: 8px 11px; border-radius: 10px; cursor: pointer; }
+        .clear-btn:hover { background: rgba(148,163,184,.08); }
+
+        .messages { padding: 28px; overflow-y: auto; scroll-behavior: smooth; }
+        .welcome { max-width: 650px; margin: 8vh auto 0; text-align: center; }
+        .welcome-icon { font-size: 42px; margin-bottom: 12px; }
+        .welcome h3 { margin: 0 0 8px; font-size: 27px; }
+        .welcome p { color: var(--muted); line-height: 1.65; margin: 0 auto 24px; max-width: 520px; }
+        .chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 9px; }
+        .chip { border: 1px solid var(--line); background: rgba(30,41,59,.55); color: #cbd5e1; border-radius: 999px; padding: 9px 12px; font-size: 12px; cursor: pointer; }
+        .chip:hover { border-color: rgba(96,165,250,.45); color: white; }
+
+        .message { display: flex; gap: 11px; margin: 0 auto 19px; max-width: 780px; }
+        .message.user { justify-content: flex-end; }
+        .avatar { flex: 0 0 31px; width: 31px; height: 31px; border-radius: 10px; display: grid; place-items: center; font-size: 13px; background: var(--assistant); border: 1px solid var(--line); }
+        .user .avatar { order: 2; background: rgba(96,165,250,.18); }
+        .bubble { max-width: min(78%, 650px); padding: 12px 15px; border: 1px solid var(--line); border-radius: 16px; line-height: 1.6; font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .assistant .bubble { background: var(--assistant); border-top-left-radius: 5px; }
+        .user .bubble { background: var(--user); border-color: rgba(96,165,250,.22); border-top-right-radius: 5px; }
+        .bubble code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+
+        .composer-wrap { padding: 15px 24px 20px; border-top: 1px solid var(--line); background: rgba(7, 11, 22, 0.45); }
+        .composer { max-width: 780px; margin: auto; display: flex; align-items: flex-end; gap: 9px; padding: 8px; border: 1px solid var(--line); border-radius: 17px; background: rgba(15,23,42,.82); }
+        textarea { flex: 1; resize: none; min-height: 42px; max-height: 130px; padding: 10px 11px; border: 0; outline: 0; color: var(--text); background: transparent; font: inherit; line-height: 1.45; }
+        textarea::placeholder { color: #64748b; }
+        .send { width: 42px; height: 42px; border: 0; border-radius: 12px; color: white; cursor: pointer; background: linear-gradient(135deg, var(--accent), var(--accent-2)); font-size: 17px; }
+        .send:disabled { opacity: .45; cursor: not-allowed; }
+        .hint { max-width: 780px; margin: 7px auto 0; color: #475569; font-size: 10px; text-align: center; }
+
+        .typing { display: inline-flex; gap: 4px; align-items: center; padding: 4px 2px; }
+        .typing i { width: 5px; height: 5px; border-radius: 50%; background: #94a3b8; animation: bounce 1s infinite ease-in-out; }
+        .typing i:nth-child(2) { animation-delay: .15s; }
+        .typing i:nth-child(3) { animation-delay: .3s; }
+        @keyframes bounce { 0%, 70%, 100% { transform: translateY(0); opacity: .45; } 35% { transform: translateY(-4px); opacity: 1; } }
+
+        @media (max-width: 760px) {
+            body { padding: 0; }
+            .app-shell { height: 100vh; min-height: 0; border-radius: 0; grid-template-columns: 1fr; }
+            .sidebar { display: none; }
+            .messages { padding: 20px 14px; }
+            .bubble { max-width: 84%; }
+            .topbar { padding: 17px; }
+            .composer-wrap { padding: 12px 12px 15px; }
+            .welcome { margin-top: 13vh; }
+        }
+    </style>
+</head>
+<body>
+    <main class="app-shell">
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-mark">⌂</div>
+                <div><h1>Home Assistant AI</h1><p>Smart-home focused assistant</p></div>
+            </div>
+            <p class="side-title">Assistant scope</p>
+            <div class="scope-card">
+                <strong>Home Assistant only</strong>
+                Ask about automations, integrations, dashboards, entities, YAML, scripts, scenes, helpers, and troubleshooting.
+            </div>
+            <div class="status"><span class="dot"></span> Gemini AI connected</div>
+        </aside>
+
+        <section class="chat">
+            <header class="topbar">
+                <div><h2>Smart Home Console</h2><span>Focused answers for Home Assistant</span></div>
+                <button class="clear-btn" id="clearBtn" type="button">Clear</button>
+            </header>
+
+            <div class="messages" id="messages">
+                <div class="welcome" id="welcome">
+                    <div class="welcome-icon">⌂</div>
+                    <h3>What are you building today?</h3>
+                    <p>I can help you configure Home Assistant, create automations, troubleshoot integrations, and write clean YAML.</p>
+                    <div class="chips">
+                        <button class="chip">Create a motion-light automation</button>
+                        <button class="chip">Explain Home Assistant helpers</button>
+                        <button class="chip">Help with an automation YAML</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="composer-wrap">
+                <form class="composer" id="chatForm">
+                    <textarea id="messageInput" rows="1" placeholder="Ask a Home Assistant question..." autocomplete="off"></textarea>
+                    <button class="send" id="sendBtn" type="submit" aria-label="Send">➤</button>
+                </form>
+                <div class="hint">Home Assistant AI • Gemini 3.1 Flash-Lite</div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const messagesEl = document.getElementById('messages');
+        const welcomeEl = document.getElementById('welcome');
+        const form = document.getElementById('chatForm');
+        const input = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        let history = [];
+
+        function addMessage(role, text, isTyping = false) {
+            if (welcomeEl) welcomeEl.remove();
+            const row = document.createElement('div');
+            row.className = `message ${role}`;
+            const avatar = document.createElement('div');
+            avatar.className = 'avatar';
+            avatar.textContent = role === 'user' ? 'You' : '⌂';
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            if (isTyping) {
+                bubble.innerHTML = '<span class="typing"><i></i><i></i><i></i></span>';
+                row.id = 'typingRow';
+            } else {
+                bubble.textContent = text;
+            }
+            row.appendChild(avatar);
+            row.appendChild(bubble);
+            messagesEl.appendChild(row);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+            return row;
+        }
+
+        function resizeInput() {
+            input.style.height = 'auto';
+            input.style.height = Math.min(input.scrollHeight, 130) + 'px';
+        }
+        input.addEventListener('input', resizeInput);
+
+        async function sendMessage(text) {
+            const message = text.trim();
+            if (!message || sendBtn.disabled) return;
+            addMessage('user', message);
+            input.value = '';
+            resizeInput();
+            sendBtn.disabled = true;
+            addMessage('assistant', '', true);
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message, history })
+                });
+                const data = await response.json();
+                const typingRow = document.getElementById('typingRow');
+                if (typingRow) typingRow.remove();
+                if (!response.ok) throw new Error(data.error || 'Request failed');
+                addMessage('assistant', data.answer);
+                history.push({ role: 'user', text: message }, { role: 'model', text: data.answer });
+                history = history.slice(-12);
+            } catch (error) {
+                const typingRow = document.getElementById('typingRow');
+                if (typingRow) typingRow.remove();
+                addMessage('assistant', error.message || 'Something went wrong. Please try again.');
+            } finally {
+                sendBtn.disabled = false;
+                input.focus();
+            }
+        }
+
+        form.addEventListener('submit', (event) => {
+            event.preventDefault();
+            sendMessage(input.value);
+        });
+
+        input.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                form.requestSubmit();
+            }
+        });
+
+        document.querySelectorAll('.chip').forEach(chip => {
+            chip.addEventListener('click', () => sendMessage(chip.textContent));
+        });
+
+        clearBtn.addEventListener('click', () => {
+            history = [];
+            messagesEl.innerHTML = `
+                <div class="welcome" id="welcome">
+                    <div class="welcome-icon">⌂</div>
+                    <h3>What are you building today?</h3>
+                    <p>I can help you configure Home Assistant, create automations, troubleshoot integrations, and write clean YAML.</p>
+                    <div class="chips">
+                        <button class="chip">Create a motion-light automation</button>
+                        <button class="chip">Explain Home Assistant helpers</button>
+                        <button class="chip">Help with an automation YAML</button>
+                    </div>
+                </div>`;
+            document.querySelectorAll('.chip').forEach(chip => chip.addEventListener('click', () => sendMessage(chip.textContent)));
+        });
+    </script>
+</body>
+</html>
